@@ -1,5 +1,3 @@
-
-// src/screens/HomeScreen.js
 import React, { useEffect } from 'react';
 import {
   View,
@@ -9,15 +7,41 @@ import {
   RefreshControl,
   Image,
   ActivityIndicator,
+  TouchableOpacity,
+  ScrollView
 } from 'react-native';
 import { useData } from './DataContext';
 
+const PerformanceMetricsView = ({ metrics }) => {
+  if (!metrics?.length) return null;
+
+  return (
+    <View style={styles.metricsContainer}>
+      <Text style={styles.metricsTitle}>Performance Metrics</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {metrics.map((metric, index) => (
+          <View key={index} style={styles.metricCard}>
+            <Text style={styles.metricOperation}>{metric.operation}</Text>
+            <Text>Duration: {metric.duration}ms</Text>
+            <Text>Size: {metric.dataSize}MB</Text>
+            <Text>Rate: {metric.rate}KB/ms</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
 const HomeScreen = () => {
-  const { products, loading, error, loadProducts } = useData();
+  const { products, loading, error, loadProducts, performanceMetrics } = useData();
 
   useEffect(() => {
-    loadProducts();
+    loadProducts(false);
   }, [loadProducts]);
+
+  const handleRefresh = () => {
+    loadProducts(true);
+  };
 
   const renderProduct = ({ item }) => (
     <View style={styles.productCard}>
@@ -51,18 +75,25 @@ const HomeScreen = () => {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.error}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton} 
+          onPress={() => loadProducts(true)}
+        >
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <PerformanceMetricsView metrics={performanceMetrics} />
       <FlatList
         data={products}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id?.toString()}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={loadProducts} />
+          <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
         }
         contentContainerStyle={styles.listContainer}
       />
@@ -126,6 +157,37 @@ const styles = StyleSheet.create({
     color: 'red',
     textAlign: 'center',
     fontSize: 16,
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  metricsContainer: {
+    padding: 16,
+    backgroundColor: 'white',
+  },
+  metricsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  metricCard: {
+    padding: 12,
+    marginRight: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    minWidth: 150,
+  },
+  metricOperation: {
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
 });
 

@@ -1,8 +1,6 @@
-
-// src/context/DataContext.js
 import React, { createContext, useState, useContext, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { getProducts, saveProducts } from './database';
+import { getProducts, saveProducts} from '../database/database';
 import { fetchProducts } from './api';
 
 const DataContext = createContext();
@@ -23,44 +21,44 @@ export const DataProvider = ({ children }) => {
   const loadProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Try to fetch from API
-      console.log('Fetching from API...');
-      const apiProducts = await fetchProducts();
+      // Check if database has data to avoid unnecessary API call
+      const startReadTime = performance.now();
+      const localProducts = await getProducts();
+      const endReadTime = performance.now();
       
-      if (apiProducts && Array.isArray(apiProducts)) {
-        console.log('API data received:', apiProducts.length, 'products');
-        setProducts(apiProducts);
-        
-        // Save to SQLite
-        try {
-          await saveProducts(apiProducts);
-          console.log('Products saved to database');
-        } catch (dbError) {
-          console.error('Error saving to database:', dbError);
-          Alert.alert('Warning', 'Failed to save data locally');
-        }
+      console.log(`Data read time from database: ${(endReadTime - startReadTime).toFixed(2)} ms`);
+      
+      if (localProducts && localProducts.length > 0) {
+        console.log('Loaded from local database:', localProducts.length, 'products');
+        setProducts(localProducts);
       } else {
-        throw new Error('Invalid API response format');
-      }
-    } catch (apiError) {
-      console.error('API Error:', apiError);
-      Alert.alert('Network Error', 'Loading data from local storage...');
-      
-      // If API fails, load from SQLite
-      try {
-        const localProducts = await getProducts();
-        if (localProducts && localProducts.length > 0) {
-          console.log('Loaded', localProducts.length, 'products from database');
-          setProducts(localProducts);
+        // No data in the database, fetch from API
+        console.log('Fetching from API...');
+        const apiProducts = await fetchProducts();
+
+        if (apiProducts && Array.isArray(apiProducts)) {
+          console.log('API data received:', apiProducts.length, 'products');
+          setProducts(apiProducts);
+
+          // Save to SQLite and measure performance
+          const startWriteTime = performance.now();
+          await saveProducts(apiProducts);
+          const endWriteTime = performance.now();
+          
+          console.log(`Data write time to database: ${(endWriteTime - startWriteTime).toFixed(2)} ms`);
+          
+          // const dataSize = await getDataSize();
+          // console.log(`Total data size in database: ${dataSize} bytes`);
         } else {
-          setError('No local data available');
+          throw new Error('Invalid API response format');
         }
-      } catch (dbError) {
-        console.error('Database Error:', dbError);
-        setError('Failed to load data from both API and local storage');
       }
+    } catch (error) {
+      console.error('Data load error:', error);
+      setError('Failed to load data');
+      Alert.alert('Error', 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -73,9 +71,5 @@ export const DataProvider = ({ children }) => {
     loadProducts,
   };
 
-  return (
-    <DataContext.Provider value={value}>
-      {children}
-    </DataContext.Provider>
-  );
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };

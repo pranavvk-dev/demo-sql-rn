@@ -1,5 +1,3 @@
-
-// src/database/database.js
 import SQLite from 'react-native-sqlite-storage';
 
 SQLite.enablePromise(true);
@@ -74,14 +72,25 @@ export const getProducts = async () => {
   try {
     const [results] = await database.executeSql('SELECT * FROM products;');
     const products = [];
-    
+
     for (let i = 0; i < results.rows.length; i++) {
       products.push(results.rows.item(i));
     }
-    
+
     return products;
   } catch (error) {
     console.error('Error getting products:', error);
     throw error;
   }
 };
+
+// export const getDataSize = async () => {
+//   try {
+//     const [result] = await database.executeSql('SELECT * FROM products;');
+//     const jsonData = JSON.stringify(result.rows.raw());
+//     return Buffer.byteLength(jsonData, 'utf8');
+//   } catch (error) {
+//     console.error('Error calculating data size:', error);
+//     throw error;
+//   }
+// };
